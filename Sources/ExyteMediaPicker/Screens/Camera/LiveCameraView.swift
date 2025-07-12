@@ -23,7 +23,10 @@ public struct LiveCameraView: UIViewRepresentable {
         )
     }
 
-    public func updateUIView(_ uiView: LiveVideoCaptureView, context: Context) { }
+    public func updateUIView(_ uiView: LiveVideoCaptureView, context: Context) {
+        uiView.session = session
+        uiView.videoLayer.videoGravity = videoGravity
+    }
 }
 
 public final class LiveVideoCaptureView: UIView {
@@ -39,7 +42,7 @@ public final class LiveVideoCaptureView: UIView {
 
     public override class var layerClass: AnyClass { AVCaptureVideoPreviewLayer.self }
 
-    private var videoLayer: AVCaptureVideoPreviewLayer { layer as! AVCaptureVideoPreviewLayer }
+    var videoLayer: AVCaptureVideoPreviewLayer { layer as! AVCaptureVideoPreviewLayer }
 
     required init?(coder: NSCoder) {
         super.init(coder: coder)
@@ -52,7 +55,10 @@ public final class LiveVideoCaptureView: UIView {
         orientation: UIDeviceOrientation
     ) {
         super.init(frame: frame)
-        self.session = session
-        videoLayer.videoGravity = videoGravity
+
+        DispatchQueue.main.async {
+            self.session = session
+            self.videoLayer.videoGravity = videoGravity
+        }
     }
 }
