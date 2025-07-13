@@ -15,50 +15,37 @@ extension Notification: @unchecked Sendable { }
 
 @MainActor
 class KeyboardHeightHelper: ObservableObject {
-
     static let shared = KeyboardHeightHelper()
 
     @Published var keyboardHeight: CGFloat = 0
     @Published var keyboardDisplayed: Bool = false
 
-    init() {
-        self.listenForKeyboardNotifications()
+    private init() {
+        listenForKeyboardNotifications()
     }
 
     private func listenForKeyboardNotifications() {
         NotificationCenter.default.addObserver(forName: UIResponder.keyboardWillShowNotification, object: nil, queue: .main) { [weak self] notification in
-            guard let self = self else { return }
+            guard let self = self,
+                  let keyboardRect = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect
+            else { return }
 
-            Task { @MainActor in
-                    // Safely extract the data from the notification on the main actor
-                    guard let userInfo = notification.userInfo,
-                          let keyboardRect = userInfo[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else { return }
-
-                    // Now update the UI on the main actor
-                    self.keyboardHeight = keyboardRect.height
-                    self.keyboardDisplayed = true
-                }
+            if self.keyboardHeight != keyboardRect.height {
+                self.keyboardHeight = keyboardRect.height
+            }
+            self.keyboardDisplayed = true
         }
 
-        NotificationCenter.default.addObserver(forName: UIResponder.keyboardWillHideNotification, object: nil, queue: .main) { (notification) in
-            DispatchQueue.main.async {
-                self.keyboardHeight = 0
-            }
+        NotificationCenter.default.addObserver(forName: UIResponder.keyboardWillHideNotification, object: nil, queue: .main) { [weak self] _ in
+            self?.keyboardHeight = 0
         }
 
-        NotificationCenter.default.addObserver(forName: UIResponder.keyboardDidHideNotification, object: nil, queue: .main) { (notification) in
-            DispatchQueue.main.async {
-                self.keyboardDisplayed = false
-            }
+        NotificationCenter.default.addObserver(forName: UIResponder.keyboardDidHideNotification, object: nil, queue: .main) { [weak self] _ in
+            self?.keyboardDisplayed = false
         }
     }
 
-    private func handleKeyboardWillShow(_ notification: Notification) {
-           guard let userInfo = notification.userInfo,
-                 let keyboardRect = userInfo[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else {
-               return
-           }
-           self.keyboardHeight = keyboardRect.height
-           self.keyboardDisplayed = true
-       }
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
 }
